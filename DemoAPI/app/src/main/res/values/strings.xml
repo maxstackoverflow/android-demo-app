@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">API test</string>
+    <string name="title_home">Item List</string>
+    <string name="title_dashboard">Sync</string>
+    <string name="sync">Sync with API</string>
+    <string name="clear">Clear</string>
+    <string name="username">Insert username here...</string>
+</resources>
