@@ -8,37 +8,38 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.google.gson.Gson;
+import com.google.gson.JsonParser;
 
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Scanner;
+import java.util.Arrays;
+import java.util.List;
 
 import eip.pepsi.com.demoapi.model.Inventory;
 
 public class ListActivity extends AppCompatActivity {
 
-    private ArrayList<Inventory> items;
     private EditText edit;
     private Button sync;
     private Button clear;
     private RecyclerView rv;
+    private TextView desc;
+    private TextView nothing;
     private long lastUpdate;
 
-    private RecyclerView.Adapter mAdapter;
+    private InventoryAdapter mAdapter;
     private RecyclerView.LayoutManager mLayoutManager;
 
 
-    private String serverUrl = "placeholder.com";
+    private String serverUrl = "https://pcf-test-products.apps.pepdfdev.pepsico.com/getproducts";
 
 
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
@@ -52,12 +53,18 @@ public class ListActivity extends AppCompatActivity {
                     sync.setVisibility(View.INVISIBLE);
                     clear.setVisibility(View.INVISIBLE);
                     rv.setVisibility(View.VISIBLE);
+                    desc.setVisibility(View.VISIBLE);
+                    if (mAdapter.isEmpty()){
+                        nothing.setVisibility(View.VISIBLE);
+                    }
                     return true;
                 case R.id.navigation_dashboard:
                     edit.setVisibility(View.VISIBLE);
                     sync.setVisibility(View.VISIBLE);
                     clear.setVisibility(View.VISIBLE);
                     rv.setVisibility(View.INVISIBLE);
+                    nothing.setVisibility(View.INVISIBLE);
+                    desc.setVisibility(View.INVISIBLE);
                     return true;
             }
             return false;
@@ -71,7 +78,6 @@ public class ListActivity extends AppCompatActivity {
 
         final ListActivity la = this;
         lastUpdate = -1;
-        items = new ArrayList<>();
 
         edit = findViewById(R.id.username);
         edit.setVisibility(View.INVISIBLE);
@@ -91,7 +97,7 @@ public class ListActivity extends AppCompatActivity {
         clear.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 edit.setText(null);
-                items.clear();
+                mAdapter.setDataset(new ArrayList<Inventory>());
             }
         });
 
@@ -99,77 +105,41 @@ public class ListActivity extends AppCompatActivity {
         mLayoutManager = new LinearLayoutManager(this);
         rv.setLayoutManager(mLayoutManager);
 
-        // specify an adapter (see also next example)
+        // specify an adapter
         mAdapter = new InventoryAdapter();
         rv.setAdapter(mAdapter);
+
+        desc = findViewById(R.id.inv);
+
+        nothing = findViewById(R.id.nothing);
 
         BottomNavigationView navigation = findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
     }
 
-    private class InventoryAdapter extends RecyclerView.Adapter<InventoryAdapter.ViewHolder>{
-        @Override
-        public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            // TODO
-            return null;
-        }
-
-        @Override
-        public void onBindViewHolder(ViewHolder holder, int position) {
-            // TODO
-        }
-
-        @Override
-        public int getItemCount() {
-            return items.size();
-        }
-
-        public class ViewHolder extends RecyclerView.ViewHolder {
-            public TextView tv;
-            public ViewHolder(TextView itemView) {
-                super(itemView);
-                tv = itemView;
-            }
-        }
-    }
     private void loadItems(String s, long l) {
         try {
-            URL url = new URL(serverUrl);
+            URL url = new URL(serverUrl + s);
             HttpURLConnection client = (HttpURLConnection) url.openConnection();
-            client.setRequestMethod("POST");
-            client.setDoOutput(true);
-            client.setDoInput(true);
-            client.addRequestProperty("Content-Type", "application/POST");
+            client.setRequestMethod("GET");
 
-            String json = new JSONObject()
-                    .put("username", s)
-                    .put("last_sync_time", Long.toString(lastUpdate))
-                    .toString();
-            OutputStream os = client.getOutputStream();
-            os.write(json.getBytes("UTF8"));
-            os.flush();
-            os.close();
-
-            if(client.getResponseCode() == HttpURLConnection.HTTP_OK) {
-
-                InputStream is = client.getInputStream();
-
-                Scanner scan = new Scanner(is).useDelimiter("\\A");
-                String result = scan.hasNext() ? scan.next() : "";
-
-                JSONArray jar = new JSONArray(result);
-
-                for (int i = 0; i < jar.length(); i ++) {
-                    JSONObject job = new JSONObject(jar.getString(i));
-                    Inventory inv = new Inventory();
-                    inv.setProp(job.get("prop"));
-                    items.add(inv);
-                }
-
+            StringBuilder result = new StringBuilder();
+            BufferedReader rd = new BufferedReader(new InputStreamReader(client.getInputStream()));
+            String line;
+            while ((line = rd.readLine()) != null) {
+                result.append(line);
             }
+            rd.close();
+
+            String res = result.toString();
+            List<Inventory> items = Arrays.asList(new Gson().fromJson(new JsonParser().parse(res)
+                    .getAsJsonObject()
+                    .getAsJsonArray("items")
+                    .toString(), Inventory[].class));
+
+            mAdapter.setDataset(items);
 
             lastUpdate = l;
-            mAdapter.notifyDataSetChanged();
         } catch (Exception e) {
 
         }

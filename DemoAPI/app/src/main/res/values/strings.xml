@@ -5,4 +5,6 @@
     <string name="sync">Sync with API</string>
     <string name="clear">Clear</string>
     <string name="username">Insert username here...</string>
+    <string name="inventory">Inventory</string>
+    <string name="no_data">There is no data available.\nTry using the Sync tab.</string>
 </resources>
