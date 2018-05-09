@@ -39,7 +39,7 @@ public class ListActivity extends AppCompatActivity {
     private RecyclerView.LayoutManager mLayoutManager;
 
 
-    private String serverUrl = "https://pcf-test-products.apps.pepdfdev.pepsico.com/getproducts";
+    private String serverUrl = "https://pcf-test-products.apps.pepdfdev.pepsico.com/getproducts?username=";
 
 
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
@@ -117,32 +117,44 @@ public class ListActivity extends AppCompatActivity {
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
     }
 
-    private void loadItems(String s, long l) {
-        try {
-            URL url = new URL(serverUrl + s);
-            HttpURLConnection client = (HttpURLConnection) url.openConnection();
-            client.setRequestMethod("GET");
+    private void loadItems(final String s, long l) {
+        final StringBuilder result = new StringBuilder();
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        URL url = new URL(serverUrl + s);
+                        HttpURLConnection client = (HttpURLConnection) url.openConnection();
+                        client.setRequestMethod("GET");
+                        int resp = client.getResponseCode();
 
-            StringBuilder result = new StringBuilder();
-            BufferedReader rd = new BufferedReader(new InputStreamReader(client.getInputStream()));
-            String line;
-            while ((line = rd.readLine()) != null) {
-                result.append(line);
+                        BufferedReader rd = new BufferedReader(new InputStreamReader(client.getInputStream()));
+                        String line;
+                        while ((line = rd.readLine()) != null) {
+                            result.append(line);
+                        }
+                        rd.close();
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
+
+            try {
+                Thread.sleep(850);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            rd.close();
-
             String res = result.toString();
+
             List<Inventory> items = Arrays.asList(new Gson().fromJson(new JsonParser().parse(res)
-                    .getAsJsonObject()
-                    .getAsJsonArray("items")
-                    .toString(), Inventory[].class));
+                .getAsJsonObject()
+                .getAsJsonArray("items")
+                .toString(), Inventory[].class));
 
             mAdapter.setDataset(items);
-
             lastUpdate = l;
-        } catch (Exception e) {
-
-        }
     }
 
 
